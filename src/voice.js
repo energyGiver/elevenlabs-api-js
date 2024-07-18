@@ -1,17 +1,7 @@
 import 'dotenv/config';
 
-export const voiceSettings = {
-  model_id: process.env.MODEL_ID,
-  voice_settings: {
-    stability: parseFloat(process.env.STABILITY),
-    similarity_boost: parseFloat(process.env.SIMILARITY_BOOST),
-    style: parseFloat(process.env.STYLE),
-    use_speaker_boost: process.env.USE_SPEAKER_BOOST === 'true'
-  }
-};
-
 export const voiceSettingsSTS = {
-  model_id: "eleven_english_sts_v2",
+  model_id: process.env.STS_MODEL_ID,
   voice_settings: {
     stability: parseFloat(process.env.STABILITY),
     similarity_boost: parseFloat(process.env.SIMILARITY_BOOST),
@@ -29,4 +19,4 @@ export const voiceIds = {
 
 export const outputFolder = process.env.OUTPUT_FOLDER;
 export const latency = parseInt(process.env.LATENCY, 10);
-export const defaultVoice = process.env.VOICE;
+export const defaultVoice = process.env.VOICE ;

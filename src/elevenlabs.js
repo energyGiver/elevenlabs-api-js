@@ -13,11 +13,12 @@ import { outputFolder, voiceIds, voiceSettingsSTS } from './voice.js';
 const apiKey = process.env.API_KEY;
 const SAVE_INTERVAL = process.env.SAVE_INTERVAL;
 
-let isProcessing = false;
+let numProcessing = 0;
 let audioQueue = [];
 let isCalled = false;
-const CHUNK_SIZE = 24;
-const MAX_QUEUE_SIZE = 1000;
+// CHUNK_SIZE 40 ~= 4 Seconds
+const CHUNK_SIZE = 40;
+const MAX_QUEUE_SIZE = CHUNK_SIZE * 100;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -38,8 +39,6 @@ export const streamSpeechToSpeech = async (latency, voice = 'Sarah') => {
 
   const voiceId = voiceIds[voice];
 
-  // Speaker 인스턴스 생성 부분 제거
-
   micInstance = mic({
     rate: '44100',
     channels: '1',
@@ -50,6 +49,7 @@ export const streamSpeechToSpeech = async (latency, voice = 'Sarah') => {
 
   micInputStream.on('data', (data) => {
     if (audioQueue.length < MAX_QUEUE_SIZE) {
+      // console.log(`Current time: ${new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 2 })}`);
       audioQueue.push(data);
     } else {
       console.warn('Audio queue is full. Dropping oldest chunk.');
@@ -57,7 +57,7 @@ export const streamSpeechToSpeech = async (latency, voice = 'Sarah') => {
       audioQueue.push(data);
     }
     
-    if (audioQueue.length >= CHUNK_SIZE && !isProcessing) {
+    if (audioQueue.length >= CHUNK_SIZE && (numProcessing < 2)) {
       console.log(`Current time: ${new Date().toLocaleTimeString()}`);
       processQueue(latency, voiceId);
     }
@@ -75,7 +75,7 @@ export const streamSpeechToSpeech = async (latency, voice = 'Sarah') => {
   micInstance.start();
   console.log('Microphone started');
 
-  // MP3 저장 간격을 5초로 줄임
+  // MP3 저장 간격: SAVE_INTERVAL
   mp3SaveInterval = setInterval(saveMp3Buffer, SAVE_INTERVAL);
 };
 
@@ -83,13 +83,16 @@ const processQueue = async (latency, voiceId) => {
   if (audioQueue.length === 0) {
     return;
   }
+  
 
-  isProcessing = true;
+  numProcessing++;
 
   const chunk = Buffer.concat(audioQueue.splice(0, CHUNK_SIZE));
-  await processAudioChunk(chunk, latency, voiceId);
-
-  isProcessing = false;
+  console.log("processAudioChunk. numProcessing: ", numProcessing)
+  if(numProcessing <= 2){
+    await processAudioChunk(chunk, latency, voiceId);
+    numProcessing--;
+  }
 };
 
 const processAudioChunk = async (chunk, latency, voiceId) => {
@@ -108,7 +111,6 @@ const processAudioChunk = async (chunk, latency, voiceId) => {
   wavWriter.on('data', (data) => {
     wavBuffer.push(data);
   });
-
   wavWriter.on('finish', async () => {
     const wavBufferData = Buffer.concat(wavBuffer);
     const formData = new FormData();
